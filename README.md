@@ -32,7 +32,7 @@ in the <system.webServer> modules section:
   </oohlalog>
 
 
-  <!-- This section webServer configuration to include http modules -->
+  <!-- This section contains webServer configuration to include http modules -->
   <system.webServer>
     <modules>
       <add name="OohLaLog.IISAppender" type="OohLaLog.IISAppender" />
