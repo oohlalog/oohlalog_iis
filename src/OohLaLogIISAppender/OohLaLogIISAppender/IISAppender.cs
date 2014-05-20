@@ -99,7 +99,6 @@ namespace OohLaLog
         {
             try
             {
-                System.Threading.Thread.Sleep(10000);
                 using (WebClient client = new MyWebClient())
                 {
                     client.Headers.Add("Content-Type", "application/json");
