@@ -12,6 +12,11 @@ Include the OohLaLogIISAppender library into your .NET project. The library DLL 
 To configure IIS appender for use in a website, OohLaLog settings need to be set in a separate <oohlalog> configSection and activated as an Http Module 
 in the <system.webServer> modules section:
 
+Logging levels correspond to Http Status Codes as follows:
+INFO: Http Status Codes of 100-399
+WARN: Http Status Codes of 400-499
+ERROR: Http Status Codes of 500-599
+
 
 ```html
   <!-- This section contains the oohlalog configuration settings -->
@@ -25,9 +30,13 @@ in the <system.webServer> modules section:
       issecure: true or false; default is false
       hostname: default is machine name as returned from System.Environment.MachineName
       loglevel: "ALL","DEBUG","INFO","WARN","ERROR"; default is "ALL"
+      bufferlimit: number of logs to buffer before posting to OLL (lower numbers impact app performance); default is 150
+      bufferinterval: age in seconds of logs in buffer before automatic posting to OLL (lower numbers impact app performance); default is 60 seconds
     <add key="issecure" value="false"/>
     <add key="hostname" value="test"/>
     <add key="loglevel" value="DEBUG"/>
+    <add key="bufferlimit" value="150"/>
+    <add key="bufferinterval" value="60"/>
     -->
   </oohlalog>
 
