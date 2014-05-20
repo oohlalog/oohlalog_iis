@@ -28,6 +28,9 @@ namespace OohLaLog
         {
             lock (this)
             {
+                int bufferlimit;
+                double bufferinterval;
+                LogLevels ll;
                 NameValueCollection ollConfig = (NameValueCollection)ConfigurationManager.GetSection("oohlalog");
                 if (ollConfig == null)
                     return;
@@ -35,15 +38,21 @@ namespace OohLaLog
                 HostName = ollConfig["hostname"] ?? System.Environment.MachineName;
                 Host = ollConfig["host"] ?? DefaultHost;
                 IsSecure = ((string)ollConfig["issecure"] ?? DefaultIsSecure.ToString()).ToLower() == "true";
-                LogLevels ll;
-                if (!Enum.TryParse((string)ollConfig["loglevel"] ?? DefaultLogLevel.ToString(), out ll))
-                    ll = LogLevels.ALL;
+                if (!Enum.TryParse((string)ollConfig["loglevel"], out ll)) ll = DefaultLogLevel;
                 LogLevel = ll;
+                if (!Int32.TryParse(ollConfig["bufferlimit"], out bufferlimit)) bufferlimit = LogBuffer.DefaultBufferLimit;
+                if (!Double.TryParse(ollConfig["bufferinterval"], out bufferinterval)) bufferinterval = LogBuffer.DefaultBufferInterval;
                 if (!String.IsNullOrEmpty(ApiKey))
                 {
                     context.EndRequest += new EventHandler(context_EndRequest);
                     Url = String.Format("{0}://{1}/{2}?apiKey={3}", (IsSecure ? "https" : "http"), Host
                         , DefaultUrlPath, ApiKey);
+                    Buffer = new LogBuffer(this)
+                    {
+                        BufferLimit=bufferlimit,
+                        BufferInterval=bufferinterval
+                    };
+                    Buffer.ActivateOptions();
                     LogCodes = new List<HttpStatusCodeRange>();
                     if (LogLevel <= LogLevels.INFO)
                         LogCodes.Add(new HttpStatusCodeRange() { MinCode = 100, MaxCode = 399, LogType = LogLevels.INFO });
@@ -53,22 +62,31 @@ namespace OohLaLog
                         LogCodes.Add(new HttpStatusCodeRange() { MinCode = 500, MaxCode = 599, LogType = LogLevels.ERROR });
                     if (LogLevel <= LogLevels.DEBUG)
                     {
-                        sendPayload(BuildJsonString(LogLevels.DEBUG.ToString(),
-                            String.Format("IIS Appender Initialized With Following Parameters: HostName={0}; ApiKey={1}; OllUrl={2}; LogLevel={3};",
-                            HostName, ApiKey, Url, LogLevel.ToString()
+                        sendPayloadAsync(BuildJsonString(LogLevels.DEBUG.ToString(),
+                            String.Format("IIS Appender Initialized With Following Parameters: HostName={0}; ApiKey={1}; OllUrl={2}; LogLevel={3}; BufferLimit={4}; BufferInterval={5};",
+                            HostName, ApiKey, Url, LogLevel.ToString(),bufferlimit,bufferinterval
                             )
                         ));
                     }
                 }
                 else
                 {
-                    sendPayload(BuildJsonString("ERROR", "IIS Appender Initialization Error: No ApiKey Configured"));
+                    //do nothing...http module will not do anything
                 }
             }
         }
         public void Dispose()
         {
-            //do nothing for now
+            string msg = BuildJsonString(LogLevels.DEBUG.ToString(), "Shutting Down OohLaLog IIS Appender");
+            if (Buffer.BufferEnabled)
+            {
+                Buffer.AddItem(msg);
+                Buffer.Close();
+            }
+            else
+            {
+                sendPayload(msg);
+            }
         }
         #endregion
 
@@ -78,6 +96,7 @@ namespace OohLaLog
         string ApiKey { get; set; }
         string Host { get; set; }
         bool IsSecure { get; set; }
+        LogBuffer Buffer { get; set; }
         LogLevels LogLevel { get; set; }
         List<HttpStatusCodeRange> LogCodes { get; set; }
         #endregion
@@ -88,14 +107,30 @@ namespace OohLaLog
             int code = httpApplication.Response.StatusCode;
             var x = LogCodes.Find(c => code >= c.MinCode && code <= c.MaxCode);
             if (x != null)
-                sendPayload(BuildJsonString(x.LogType.ToString(), httpApplication.Context));
+            {
+                if (Buffer.BufferEnabled)
+                    Buffer.AddItem(BuildJsonString(x.LogType.ToString(), httpApplication.Context));
+                else
+                    sendPayloadAsync(BuildJsonString(x.LogType.ToString(), httpApplication.Context));
+            }
         }
         #region Helper Methods
-        private void sendPayload(string payload)
+        public void sendLogs(string[] logs)
         {
-            System.Threading.ThreadPool.QueueUserWorkItem(new WaitCallback(sendPayloadAsync), payload);
+            sendLogs(logs, true);
         }
-        private void sendPayloadAsync(object payload)
+        public void sendLogs(string[] logs,bool async)
+        {
+            if (async)
+                sendPayloadAsync(String.Join(",", logs));
+            else
+                sendPayload(String.Join(",",logs));
+        }
+        private void sendPayloadAsync(string payload)
+        {
+            System.Threading.ThreadPool.QueueUserWorkItem(new WaitCallback(sendPayload), payload);
+        }
+        private void sendPayload(object payload)
         {
             try
             {
