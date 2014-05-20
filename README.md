@@ -9,13 +9,16 @@ The OohLaLog IIS appender is an Http Module that can be configured for use in we
 
 Include the OohLaLogIISAppender library into your .NET project. The library DLL (OohLaLogIISAppender.dll) can be found in the root of this repository.
 
-To configure IIS appender for use in a website, OohLaLog settings need to be set in a separate <oohlalog> configSection and activated as an Http Module 
-in the <system.webServer> modules section:
-
 Logging levels correspond to Http Status Codes as follows:
+
+```html
 INFO: Http Status Codes of 100-399
 WARN: Http Status Codes of 400-499
 ERROR: Http Status Codes of 500-599
+```
+
+To configure IIS appender for use in a website, OohLaLog settings need to be set in a separate <oohlalog> configSection and activated as an Http Module 
+in the <system.webServer> modules section:
 
 
 ```html
