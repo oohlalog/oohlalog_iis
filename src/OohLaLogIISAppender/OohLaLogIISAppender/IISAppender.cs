@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Web;
 using System.Net;
 using System.Configuration;
@@ -93,12 +93,17 @@ namespace OohLaLog
         #region Helper Methods
         private void sendPayload(string payload)
         {
+            System.Threading.ThreadPool.QueueUserWorkItem(new WaitCallback(sendPayloadAsync), payload);
+        }
+        private void sendPayloadAsync(object payload)
+        {
             try
             {
+                System.Threading.Thread.Sleep(10000);
                 using (WebClient client = new MyWebClient())
                 {
                     client.Headers.Add("Content-Type", "application/json");
-                    string response = client.UploadString(Url, String.Format("{{\"logs\": [{1}]}}", HostName, payload));
+                    string response = client.UploadString(Url, String.Format("{{\"logs\": [{1}]}}", HostName, payload.ToString()));
                 }
             }
             catch (Exception e)
