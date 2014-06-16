@@ -34,6 +34,7 @@ namespace OohLaLog
                 NameValueCollection ollConfig = (NameValueCollection)ConfigurationManager.GetSection("oohlalog");
                 if (ollConfig == null)
                     return;
+                AgentName = String.Format("iis-v{0}", typeof(IISAppender).Assembly.GetName().Version);
                 ApiKey = ollConfig["apikey"];
                 HostName = ollConfig["hostname"] ?? System.Environment.MachineName;
                 Host = ollConfig["host"] ?? DefaultHost;
@@ -92,6 +93,7 @@ namespace OohLaLog
 
         #region Properties
         string HostName { get; set; }
+        string AgentName { get; set; }
         string Url { get; set; }
         string ApiKey { get; set; }
         string Host { get; set; }
@@ -137,7 +139,7 @@ namespace OohLaLog
                 using (WebClient client = new MyWebClient())
                 {
                     client.Headers.Add("Content-Type", "application/json");
-                    string response = client.UploadString(Url, String.Format("{{\"logs\": [{1}]}}", HostName, payload.ToString()));
+                    string response = client.UploadString(Url, String.Format("{{\"agent\": \"{0}\",\"logs\": [{1}]}}", AgentName, payload.ToString()));
                 }
             }
             catch (Exception e)
